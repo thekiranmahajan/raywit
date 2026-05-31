@@ -29,25 +29,6 @@ export const metadata: Metadata = {
     "secure messaging",
   ],
   authors: [{ name: "RayWit" }],
-  openGraph: {
-    title: "Gappe",
-    description:
-      "A fixed private chat for two users with password login and persisted message history.",
-    url: "https://raywit",
-    images: [
-      {
-        url: "/logo.svg",
-      } as { url: string },
-    ],
-    siteName: "RayWit",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Gappe",
-    description:
-      "Secure private chat for Alice and Bob with persistent message storage.",
-    images: ["/logo.svg"],
-  },
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
@@ -98,48 +79,6 @@ export default function RootLayout({
           }
         />
 
-        {/* Open Graph Meta Tags */}
-        <meta
-          name="twitter:image"
-          content={
-            Array.isArray(metadata.twitter?.images)
-              ? (metadata.twitter.images[0]?.toString() ?? "")
-              : ""
-          }
-        />
-        <meta
-          property="og:description"
-          content={metadata.openGraph?.description ?? ""}
-        />
-        <meta
-          property="og:url"
-          content={metadata.openGraph?.url?.toString() ?? ""}
-        />
-        <meta
-          property="og:image"
-          content={
-            Array.isArray(metadata.openGraph?.images) &&
-            typeof metadata.openGraph.images[0] === "object"
-              ? (metadata.openGraph.images[0]?.url ?? "")
-              : ""
-          }
-        />
-        <meta
-          property="og:site_name"
-          content={metadata.openGraph?.siteName ?? ""}
-        />
-
-        {/* Twitter Meta Tags */}
-        <meta name="twitter:card" content={metadata.twitter?.card ?? ""} />
-        <meta name="twitter:title" content={metadata.twitter?.title ?? ""} />
-        <meta
-          name="twitter:description"
-          content={metadata.twitter?.description ?? ""}
-        />
-        <meta
-          name="twitter:image"
-          content={metadata.twitter?.images?.[0] ?? ""}
-        />
         <title>{String(metadata.title ?? "RayWit")}</title>
 
         {/* Fonts */}

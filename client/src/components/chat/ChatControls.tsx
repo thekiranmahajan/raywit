@@ -117,20 +117,6 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
     setShowEmojiPicker(!showEmojiPicker);
   };
 
-  // Handle selecting an AI suggestion
-  const handleSelectSuggestion = (suggestion: string) => {
-    setInput(suggestion);
-    setAiSuggestion((prev) => ({ ...prev, visible: false }));
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  };
-
-  // Close AI suggestions
-  const closeAiSuggestions = () => {
-    setAiSuggestion((prev) => ({ ...prev, visible: false }));
-  };
-
   return (
     <div className="relative order-2 px-2 sm:px-0 pb-5 md:order-1">
       <div className="rounded-3xl border-input bg-card/80 relative z-10 border p-0 pb-2 shadow-xs backdrop-blur-xl">

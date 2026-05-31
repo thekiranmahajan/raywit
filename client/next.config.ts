@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "raywit-production.up.railway.app",
+        hostname: "raywit-server.up.railway.app",
       },
     ],
   },
@@ -24,14 +24,15 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination:
           process.env.NODE_ENV === "production"
-            ? process.env.SERVER_URL || "https://raywit.onrender.com/api/:path*"
+            ? process.env.SERVER_URL ||
+              "https://raywit-server.up.railway.app/api/:path*"
             : "http://localhost:5000/api/:path*",
       },
       {
         source: "/socket.io/:path*",
         destination:
           process.env.NODE_ENV === "production"
-            ? "https://raywit.onrender.com/socket.io/:path*"
+            ? "https://raywit-server.up.railway.app/socket.io/:path*"
             : "http://localhost:5000/socket.io/:path*",
       },
     ];

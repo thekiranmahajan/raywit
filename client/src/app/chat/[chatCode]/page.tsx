@@ -37,6 +37,8 @@ const ChatRoom = () => {
     messages,
   } = useSocket(FIXED_ROOM_ID, userName);
 
+  useSocketNotificationSound(messages, userId);
+
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
