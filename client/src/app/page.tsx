@@ -1,0 +1,91 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setUserName } from "@/features/userSlice";
+import { login, saveAuthToken, getAuthToken } from "@/services/authService";
+
+function Home() {
+  const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const router = useRouter();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (token) {
+      router.replace("/chat/raywit");
+    }
+  }, [router]);
+
+  const handleLogin = async () => {
+    const normalizedPassword = password.trim();
+    if (!normalizedPassword) {
+      toast("Enter your password to continue.");
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const result = await login(normalizedPassword);
+      saveAuthToken(result.token);
+      dispatch(setUserName(result.userName));
+      router.push("/chat/raywit");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast("Login failed. Check your password.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleLogin();
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-zinc-50 dark:bg-zinc-950">
+      <div className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-8 shadow-lg shadow-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-black/10">
+        <div className="text-center space-y-4">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-white">
+            Ray<span className="text-rose-500">Wit</span>
+          </h1>
+        </div>
+
+        <div className="mt-8 space-y-4">
+          <div className="rounded-2xl bg-zinc-100 p-4 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+            <p className="font-semibold text-zinc-900 dark:text-white">Login</p>
+            <p>Enter your password</p>
+          </div>
+
+          <div className="space-y-3">
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Password"
+              className="h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900"
+            />
+          </div>
+
+          <Button
+            onClick={handleLogin}
+            disabled={isLoggingIn}
+            className="w-full h-12 rounded-2xl bg-zinc-950 text-white hover:bg-zinc-900 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
+          >
+            {isLoggingIn ? "Signing in..." : "Sign in"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Home;
