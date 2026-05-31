@@ -15,6 +15,7 @@ import {
   MediaButtons,
   ActionButtons,
   EmojiPickerContainer,
+  GifPickerContainer,
 } from "./index";
 
 const ChatControlsContent: React.FC<ChatControlsProps> = ({
@@ -30,8 +31,11 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
   const { uploadedFiles, clearFiles } = useUploadedFiles();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const gifPickerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const gifButtonRef = useRef<HTMLButtonElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [currentSkinTone, setCurrentSkinTone] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -47,13 +51,23 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
       ) {
         setShowEmojiPicker(false);
       }
+
+      if (
+        showGifPicker &&
+        gifPickerRef.current &&
+        !gifPickerRef.current.contains(event.target as Node) &&
+        gifButtonRef.current &&
+        !gifButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowGifPicker(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showEmojiPicker]);
+  }, [showEmojiPicker, showGifPicker]);
   // Focus input when reply is clicked
   useEffect(() => {
     if (shouldFocusInput && inputRef.current) {
@@ -115,6 +129,23 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
   // Toggle emoji picker visibility
   const toggleEmojiPicker = () => {
     setShowEmojiPicker(!showEmojiPicker);
+    setShowGifPicker(false); // Close GIF picker when opening emoji picker
+  };
+
+  // Toggle GIF picker visibility
+  const toggleGifPicker = () => {
+    setShowGifPicker(!showGifPicker);
+    setShowEmojiPicker(false); // Close emoji picker when opening GIF picker
+  };
+
+  // Handle GIF selection
+  const handleGifSelect = (gifUrl: string) => {
+    const gifMarkdown = `[gif:${gifUrl}]`;
+    setInput(input + (input ? " " : "") + gifMarkdown);
+    setShowGifPicker(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
 
   return (
@@ -136,10 +167,12 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
         />
 
         <div className="flex items-center gap-2 mt-2 w-full justify-between px-2">
-          {/* Media Buttons (File Upload, Emoji, Image) */}
+          {/* Media Buttons (File Upload, Emoji, GIF) */}
           <MediaButtons
             emojiButtonRef={emojiButtonRef}
             toggleEmojiPicker={toggleEmojiPicker}
+            gifButtonRef={gifButtonRef}
+            toggleGifPicker={toggleGifPicker}
           />{" "}
           <ActionButtons
             handleSend={handleSend}
@@ -156,6 +189,13 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
           onEmojiSelect={handleEmojiSelect}
           currentSkinTone={currentSkinTone}
           onSkinToneChange={handleSkinToneChange}
+        />
+
+        {/* GIF Picker */}
+        <GifPickerContainer
+          pickerRef={gifPickerRef}
+          showGifPicker={showGifPicker}
+          onGifSelect={handleGifSelect}
         />
       </div>
     </div>

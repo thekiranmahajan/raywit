@@ -9,16 +9,18 @@ interface MessageAttachmentsProps {
 const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
 }) => {
-  const imageAttachments = attachments.filter((att) => att.type === "image");
+  const mediaAttachments = attachments.filter(
+    (att) => att.type === "image" || att.type === "gif"
+  );
 
-  if (imageAttachments.length === 0) {
+  if (mediaAttachments.length === 0) {
     return null;
   }
 
   return (
     <div className="flex flex-wrap gap-2 mt-2">
-      {imageAttachments.map((attachment, index) => (
-        <ImageAttachment
+      {mediaAttachments.map((attachment, index) => (
+        <MediaAttachment
           key={`${attachment.url}-${index}`}
           attachment={attachment}
         />
@@ -27,11 +29,11 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   );
 };
 
-interface ImageAttachmentProps {
+interface MediaAttachmentProps {
   attachment: MessageAttachment;
 }
 
-const ImageAttachment: React.FC<ImageAttachmentProps> = ({ attachment }) => {
+const MediaAttachment: React.FC<MediaAttachmentProps> = ({ attachment }) => {
   const [showFullImage, setShowFullImage] = useState(false);
 
   const toggleFullImage = () => {

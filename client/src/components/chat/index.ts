@@ -4,6 +4,8 @@ import ChatInput from "./ChatInput";
 import EmojiPicker from "./EmojiPicker";
 import EmojiPickerContainer from "./EmojiPickerContainer";
 import FileUploadButton from "./FileUploadButton";
+import GifPicker from "./GifPicker";
+import GifPickerContainer from "./GifPickerContainer";
 import { IncomingMessage } from "./IncomingMessage";
 import MediaButtons from "./MediaButtons";
 import { MessageActions } from "./MessageActions";
@@ -27,6 +29,8 @@ export {
   FileUploadButton,
   EmojiPicker,
   EmojiPickerContainer,
+  GifPicker,
+  GifPickerContainer,
   MessageAttachments,
   UploadedImagesPreview,
 };

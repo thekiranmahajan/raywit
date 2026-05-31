@@ -156,11 +156,11 @@ export interface TypingStatusEvent {
 }
 
 /**
- * Represents a message attachment (e.g., image, file)
+ * Represents a message attachment (e.g., image, file, gif)
  */
 export interface MessageAttachment {
-  /** The type of attachment: image or file */
-  type: "image" | "file";
+  /** The type of attachment: image, gif or file */
+  type: "image" | "file" | "gif";
 
   /** The URL of the attachment */
   url: string;
@@ -182,14 +182,14 @@ export const extractAttachments = (
 ): { text: string; attachments: MessageAttachment[] } => {
   const attachments: MessageAttachment[] = [];
 
-  // Regular expression to find image attachments in the format [image:url]
-  const imageRegex = /\[image:([^\]]+)\]/g;
+  // Regular expression to find image attachments in the format [image:url] or [gif:url]
+  const attachmentRegex = /\[(image|gif):([^\]]+)\]/g;
 
-  // Extract image URLs and remove the attachment markers from the message
+  // Extract image/gif URLs and remove the attachment markers from the message
   const text = message
-    .replace(imageRegex, (match, url) => {
+    .replace(attachmentRegex, (match, type, url) => {
       attachments.push({
-        type: "image",
+        type: type === "gif" ? "gif" : "image",
         url,
       });
       return "";
@@ -205,5 +205,5 @@ export const extractAttachments = (
  * @returns True if the message contains attachments, false otherwise
  */
 export const hasAttachments = (message: string): boolean => {
-  return /\[(image|file):[^\]]+\]/.test(message);
+  return /\[(image|gif|file):[^\]]+\]/.test(message);
 };
