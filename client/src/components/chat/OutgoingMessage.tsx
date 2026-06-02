@@ -5,14 +5,7 @@ import { MessageActions } from "./MessageActions";
 import MessageAttachments from "./MessageAttachments";
 import { ReplyPreview } from "./ReplyPreview";
 import { extractAttachments } from "@/types/chat";
-import {
-  User,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Check,
-  CheckCheck,
-} from "lucide-react";
+import { User, ChevronDown, ChevronUp, Clock, Check } from "lucide-react";
 import React, { useState, useRef } from "react";
 
 interface OutgoingMessageProps {
@@ -143,22 +136,33 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
               {deliveryStatus === "pending" && (
                 <Clock
                   className="w-3 h-3 text-gray-400 animate-spin"
-                  title="Sending..."
+                  aria-label="Sending"
+                  role="img"
                 />
               )}
               {deliveryStatus === "sent" && (
                 <Check
                   className="w-3 h-3 text-gray-400"
-                  title="Sent to server"
+                  aria-label="Sent to server"
+                  role="img"
                   strokeWidth={3}
                 />
               )}
               {deliveryStatus === "delivered" && (
-                <CheckCheck
-                  className="w-3 h-3 text-blue-500"
-                  title="Delivered to recipient"
-                  strokeWidth={3}
-                />
+                <span className="flex items-center gap-0.5">
+                  <Check
+                    className="w-3 h-3 text-blue-500"
+                    aria-label="Delivered to recipient"
+                    role="img"
+                    strokeWidth={3}
+                  />
+                  <Check
+                    className="w-3 h-3 text-blue-500"
+                    aria-label="Delivered to recipient"
+                    role="img"
+                    strokeWidth={3}
+                  />
+                </span>
               )}
             </div>
           </div>

@@ -263,17 +263,28 @@ export function useSocket(
         replyTo,
         timestamp,
       }: MessageEventData) => {
-        setMessages((prev) => [
-          ...prev,
-          createUserMessage(
-            senderName || userId,
-            decryptMessage(encryptedData),
-            false,
-            messageId,
-            replyTo && { ...replyTo, message: decryptMessage(replyTo.message) },
-            timestamp,
-          ),
-        ]);
+        setMessages((prev) => {
+          // Avoid adding duplicate messages (may occur if server broadcasts to all)
+          const exists = prev.some(
+            (m) => m.messageId && m.messageId === messageId,
+          );
+          if (exists) return prev;
+
+          return [
+            ...prev,
+            createUserMessage(
+              senderName || userId,
+              decryptMessage(encryptedData),
+              false,
+              messageId,
+              replyTo && {
+                ...replyTo,
+                message: decryptMessage(replyTo.message),
+              },
+              timestamp,
+            ),
+          ];
+        });
       },
     );
     // 🔥 Load old messages from server and decrypt

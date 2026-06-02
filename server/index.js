@@ -345,8 +345,11 @@ io.on("connection", (socket) => {
       const userEntry = roomUsers?.get(currentUserId);
       if (userEntry) {
         userEntry.sockets.delete(socket.id);
+        // If this was the last socket for the user, remove immediately and notify others
         if (userEntry.sockets.size === 0) {
-          scheduleUserLeave(roomId, currentUserId);
+          const userName = userEntry.name;
+          roomUsers.delete(currentUserId);
+          emitUserLeft(roomId, userName);
         }
       }
       typingUsers[roomId]?.delete(socket.data.userName);
@@ -359,8 +362,11 @@ io.on("connection", (socket) => {
         const userEntry = roomUsers?.get(currentUserId);
         if (userEntry) {
           userEntry.sockets.delete(socket.id);
+          // Immediately remove and notify if this was the last socket
           if (userEntry.sockets.size === 0) {
-            scheduleUserLeave(currentRoomId, currentUserId);
+            const userName = userEntry.name;
+            roomUsers.delete(currentUserId);
+            emitUserLeft(currentRoomId, userName);
           }
         }
         typingUsers[currentRoomId]?.delete(socket.data.userName);
