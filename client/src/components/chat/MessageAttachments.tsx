@@ -10,7 +10,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
 }) => {
   const mediaAttachments = attachments.filter(
-    (att) => att.type === "image" || att.type === "gif"
+    (att) => att.type === "image" || att.type === "gif",
   );
 
   if (mediaAttachments.length === 0) {
