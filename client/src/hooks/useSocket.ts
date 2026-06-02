@@ -37,11 +37,13 @@ const createUserMessage = (
   isSent: boolean,
   messageId?: string,
   replyTo?: { message: string; sender?: string; messageId?: string },
+  rawTimestamp?: number,
 ): ChatMessage => ({
   type: "user",
   sender,
   message,
   timestamp: createMessageTimestamp(),
+  rawTimestamp: rawTimestamp || Date.now(),
   isSent,
   messageId:
     messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -64,6 +66,19 @@ export function useSocket(
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const userIdRef = useRef("");
   const recentlyLeftUsers = useRef<Record<string, number>>({});
+  const pendingMessagesRef = useRef<
+    Map<
+      string,
+      {
+        message: string;
+        userId: string;
+        replyTo?: { message: string; sender?: string; messageId?: string };
+        timestamp: number;
+        attempts: number;
+      }
+    >
+  >(new Map());
+  const retryTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const authToken = getAuthToken();
 
   useEffect(() => {
@@ -164,6 +179,20 @@ export function useSocket(
           roomId,
           userId: userIdRef.current,
         });
+
+        // Retry pending messages
+        pendingMessagesRef.current.forEach((msg, messageId) => {
+          console.log(`Retrying pending message: ${messageId}`);
+          socketIo.emit("send-message", {
+            encryptedData: encryptMessage(msg.message),
+            userId: msg.userId,
+            messageId,
+            replyTo: msg.replyTo && {
+              ...msg.replyTo,
+              message: encryptMessage(msg.replyTo.message),
+            },
+          });
+        });
       });
     });
 
@@ -232,6 +261,7 @@ export function useSocket(
         userName: senderName,
         messageId,
         replyTo,
+        timestamp,
       }: MessageEventData) => {
         setMessages((prev) => [
           ...prev,
@@ -241,6 +271,7 @@ export function useSocket(
             false,
             messageId,
             replyTo && { ...replyTo, message: decryptMessage(replyTo.message) },
+            timestamp,
           ),
         ]);
       },
@@ -254,24 +285,29 @@ export function useSocket(
 
       // Convert server messages to client format
       const userNameBase = userName.trim();
-      const decrypted = messages.map((msg) => ({
-        type: "user" as const,
-        sender: msg.userName || msg.userId,
-        message: decryptMessage(msg.encryptedData),
-        timestamp: msg.timestamp
-          ? formatMessageTime(new Date(msg.timestamp))
-          : createMessageTimestamp(),
-        rawTimestamp: msg.timestamp,
-        isSent:
+      const decrypted = messages.map((msg) => {
+        const isSent =
           (userNameBase && msg.userId.split("_")[0] === userNameBase) ||
-          msg.userId === userIdRef.current,
-        messageId: msg.messageId,
-        replyTo: msg.replyTo && {
-          messageId: msg.replyTo.messageId,
-          sender: msg.replyTo.sender,
-          message: decryptMessage(msg.replyTo.message),
-        },
-      }));
+          msg.userId === userIdRef.current;
+
+        return {
+          type: "user" as const,
+          sender: msg.userName || msg.userId,
+          message: decryptMessage(msg.encryptedData),
+          timestamp: msg.timestamp
+            ? formatMessageTime(new Date(msg.timestamp))
+            : createMessageTimestamp(),
+          rawTimestamp: msg.timestamp || Date.now(),
+          isSent,
+          deliveryStatus: isSent ? ("delivered" as const) : undefined,
+          messageId: msg.messageId,
+          replyTo: msg.replyTo && {
+            messageId: msg.replyTo.messageId,
+            sender: msg.replyTo.sender,
+            message: decryptMessage(msg.replyTo.message),
+          },
+        };
+      });
 
       // Process messages
       setMessages((prev) => {
@@ -286,22 +322,24 @@ export function useSocket(
             msg.timestamp.startsWith(new Date().toISOString().split("T")[0]),
         );
 
-        // Check if server has newer/more messages
+        // Check if server has newer/more messages using rawTimestamp
         const userMsgsCount = prev.filter((m) => m.type === "user").length;
+        const serverMaxTimestamp = Math.max(
+          ...decrypted.map((m) => m.rawTimestamp || 0),
+          0,
+        );
+        const clientMaxTimestamp = Math.max(
+          ...prev
+            .filter((m) => m.type === "user")
+            .map((m) => m.rawTimestamp || 0),
+          0,
+        );
+
         const serverHasNewerData =
           decrypted.length > 0 &&
           (userMsgsCount === 0 ||
             decrypted.length > userMsgsCount ||
-            Math.max(
-              ...decrypted.map((m) => new Date(m.timestamp).getTime()),
-              0,
-            ) >
-              Math.max(
-                ...prev
-                  .filter((m) => m.type === "user")
-                  .map((m) => new Date(m.timestamp).getTime()),
-                0,
-              ));
+            serverMaxTimestamp > clientMaxTimestamp);
 
         // Replace messages or add new unique ones
         if (serverHasNewerData) {
@@ -318,6 +356,44 @@ export function useSocket(
         return newMsgs.length > 0 ? [...newMsgs, ...prev] : prev;
       });
     });
+
+    // Handle message acknowledgment (sent to server)
+    socketIo.on("message-ack", ({ messageId, deliveryStatus, timestamp }) => {
+      console.log(`Message ${messageId} acknowledged:`, deliveryStatus);
+
+      // Remove from pending
+      pendingMessagesRef.current.delete(messageId);
+
+      // Clear any existing retry timer
+      const timer = retryTimersRef.current.get(messageId);
+      if (timer) {
+        clearTimeout(timer);
+        retryTimersRef.current.delete(messageId);
+      }
+
+      // Update message status
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.messageId === messageId
+            ? { ...msg, deliveryStatus: "sent" as const }
+            : msg,
+        ),
+      );
+    });
+
+    // Handle message delivery confirmation (received by other users)
+    socketIo.on("message-delivered", ({ messageId, deliveryStatus }) => {
+      console.log(`Message ${messageId} delivered:`, deliveryStatus);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.messageId === messageId
+            ? { ...msg, deliveryStatus: "delivered" as const }
+            : msg,
+        ),
+      );
+    });
+
     setSocket(socketIo);
 
     // Handle visibility change to reconnect or fetch messages when tab becomes visible
@@ -359,6 +435,11 @@ export function useSocket(
       socketIo.disconnect();
       clearInterval(cleanupInterval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      // Clear all retry timers
+      retryTimersRef.current.forEach((timer) => clearTimeout(timer));
+      retryTimersRef.current.clear();
+      pendingMessagesRef.current.clear();
     };
   }, [roomId, userName, authToken]);
   const sendMessage = useCallback(
@@ -370,6 +451,16 @@ export function useSocket(
       if (!socket) return;
 
       const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const rawTimestamp = Date.now();
+
+      // Store in pending messages for retry
+      pendingMessagesRef.current.set(messageId, {
+        message,
+        userId,
+        replyTo,
+        timestamp: rawTimestamp,
+        attempts: 0,
+      });
 
       // Send message to server using the stable session ID
       socket.emit("send-message", {
@@ -382,10 +473,83 @@ export function useSocket(
         },
       });
 
+      // Set retry timeout (retry after 5 seconds if no ack)
+      const retryTimer = setTimeout(() => {
+        const pendingMsg = pendingMessagesRef.current.get(messageId);
+        if (pendingMsg && socket.connected) {
+          pendingMsg.attempts += 1;
+          console.log(
+            `Retrying message ${messageId}, attempt ${pendingMsg.attempts}`,
+          );
+
+          // Only retry up to 3 times
+          if (pendingMsg.attempts <= 3) {
+            socket.emit("send-message", {
+              encryptedData: encryptMessage(pendingMsg.message),
+              userId: pendingMsg.userId,
+              messageId,
+              replyTo: pendingMsg.replyTo && {
+                ...pendingMsg.replyTo,
+                message: encryptMessage(pendingMsg.replyTo.message),
+              },
+            });
+
+            // Schedule another retry
+            const nextRetry = setTimeout(() => {
+              if (
+                pendingMessagesRef.current.has(messageId) &&
+                socket.connected
+              ) {
+                const msg = pendingMessagesRef.current.get(messageId);
+                if (msg && msg.attempts <= 3) {
+                  msg.attempts += 1;
+                  console.log(
+                    `Retrying message ${messageId}, attempt ${msg.attempts}`,
+                  );
+                  socket.emit("send-message", {
+                    encryptedData: encryptMessage(msg.message),
+                    userId: msg.userId,
+                    messageId,
+                    replyTo: msg.replyTo && {
+                      ...msg.replyTo,
+                      message: encryptMessage(msg.replyTo.message),
+                    },
+                  });
+                  retryTimersRef.current.set(messageId, nextRetry);
+                }
+              }
+            }, 5000);
+
+            retryTimersRef.current.set(messageId, nextRetry);
+          } else {
+            // Give up after 3 retries
+            console.log(`Giving up on message ${messageId} after 3 retries`);
+            pendingMessagesRef.current.delete(messageId);
+            // Update UI to show failed delivery
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.messageId === messageId
+                  ? { ...msg, deliveryStatus: "pending" as const }
+                  : msg,
+              ),
+            );
+          }
+        }
+      }, 5000);
+
+      retryTimersRef.current.set(messageId, retryTimer);
+
       // Render local sent message with the friendly user name
       setMessages((prev) => [
         ...prev,
-        createUserMessage(userName, message, true, messageId, replyTo),
+        createUserMessage(
+          userName,
+          message,
+          true,
+          messageId,
+          replyTo,
+          rawTimestamp,
+        ),
       ]);
     },
     [socket, userName],

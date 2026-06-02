@@ -14,6 +14,7 @@ interface ChatMessage {
   timestamp: string;
   isSent?: boolean;
   messageId?: string;
+  deliveryStatus?: "pending" | "sent" | "delivered";
   replyTo?: {
     messageId?: string;
     message: string;
@@ -144,6 +145,7 @@ const ChatFeed: FC<ChatFeedProps> = ({ messages, messagesEndRef }) => {
                   message={chat.message || ""}
                   timestamp={chat.timestamp}
                   messageId={chat.messageId}
+                  deliveryStatus={chat.deliveryStatus}
                   replyTo={chat.replyTo}
                 />
               )}

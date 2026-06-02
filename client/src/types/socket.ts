@@ -14,8 +14,10 @@ export interface ChatMessage {
   sender?: string;
   message: string;
   timestamp: string;
+  rawTimestamp?: number; // Raw millisecond timestamp for comparisons
   isSent?: boolean;
   messageId?: string;
+  deliveryStatus?: "pending" | "sent" | "delivered"; // pending: retrying, sent: on server, delivered: received by other users
   replyTo?: {
     messageId?: string;
     message: string;
@@ -38,6 +40,7 @@ export interface MessageEventData {
   userId: string;
   userName?: string;
   messageId?: string;
+  timestamp?: number;
   replyTo?: {
     messageId?: string;
     message: string;

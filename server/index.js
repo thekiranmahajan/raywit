@@ -297,12 +297,27 @@ io.on("connection", (socket) => {
           timestamp: storedMessage.timestamp,
         });
 
+        // Send acknowledgment to sender (message saved to database)
+        socket.emit("message-ack", {
+          messageId,
+          deliveryStatus: "sent",
+          timestamp: storedMessage.timestamp,
+        });
+
+        // Broadcast to other users
         socket.to(roomId).emit("receive-message", {
           encryptedData,
           userId,
           userName: senderName,
           messageId,
           replyTo,
+          timestamp: storedMessage.timestamp,
+        });
+
+        // Send delivery confirmation to all users in room (for double tick)
+        io.to(roomId).emit("message-delivered", {
+          messageId,
+          deliveryStatus: "delivered",
         });
       },
     );

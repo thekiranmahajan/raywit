@@ -5,13 +5,21 @@ import { MessageActions } from "./MessageActions";
 import MessageAttachments from "./MessageAttachments";
 import { ReplyPreview } from "./ReplyPreview";
 import { extractAttachments } from "@/types/chat";
-import { User, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  User,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Check,
+  CheckCheck,
+} from "lucide-react";
 import React, { useState, useRef } from "react";
 
 interface OutgoingMessageProps {
   message: string;
   timestamp: string;
   messageId?: string;
+  deliveryStatus?: "pending" | "sent" | "delivered";
   replyTo?: {
     message: string;
     sender?: string;
@@ -26,6 +34,7 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
   message,
   timestamp,
   messageId,
+  deliveryStatus = "pending",
   replyTo,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -128,8 +137,29 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
             )}
 
             {/* Timestamp inside bubble */}
-            <div className="">
+            <div className="flex items-center gap-1">
               <span className="text-[9px] text-gray-400">{timestamp}</span>
+              {/* Delivery status indicators */}
+              {deliveryStatus === "pending" && (
+                <Clock
+                  className="w-3 h-3 text-gray-400 animate-spin"
+                  title="Sending..."
+                />
+              )}
+              {deliveryStatus === "sent" && (
+                <Check
+                  className="w-3 h-3 text-gray-400"
+                  title="Sent to server"
+                  strokeWidth={3}
+                />
+              )}
+              {deliveryStatus === "delivered" && (
+                <CheckCheck
+                  className="w-3 h-3 text-blue-500"
+                  title="Delivered to recipient"
+                  strokeWidth={3}
+                />
+              )}
             </div>
           </div>
         </div>
