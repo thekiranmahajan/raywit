@@ -3,7 +3,6 @@ import { renderTextWithLinks } from "../../utils/textFormatUtils";
 import { isSingleOrPairEmojiMessage } from "@/utils/emojiUtils";
 import { MessageActions } from "./MessageActions";
 import MessageAttachments from "./MessageAttachments";
-import { MessageReactions } from "./MessageReactions";
 import { ReplyPreview } from "./ReplyPreview";
 import { extractAttachments } from "@/types/chat";
 import { User, ChevronDown, ChevronUp } from "lucide-react";
@@ -19,8 +18,6 @@ interface IncomingMessageProps {
     sender?: string;
     messageId?: string;
   };
-  reactions?: string[];
-  onReact?: (emoji: string) => void;
 }
 
 /**
@@ -32,8 +29,6 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
   userName,
   messageId,
   replyTo,
-  reactions = [],
-  onReact,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -80,7 +75,7 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
           <User className="h-4 w-4 text-white dark:text-zinc-200 relative z-10" />
         </div>
         <div
-          className="message-bubble flex max-w-xs rounded-[22px] border border-zinc-800 bg-black p-3 shadow-sm text-sm text-white dark:border-zinc-800 dark:bg-black dark:text-white wrap-break-word whitespace-pre-line relative"
+          className="message-bubble flex max-w-xs rounded-[22px] border border-zinc-800 bg-black/50 p-3 shadow-sm text-sm text-white dark:border-zinc-700 dark:bg-black dark:text-white wrap-break-word whitespace-pre-line relative"
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
           onTouchStart={() => setIsHovering(true)}
@@ -148,10 +143,6 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
           </div>
         </div>
       </div>
-
-      {messageId && onReact && (
-        <MessageReactions reactions={reactions ?? []} onReact={onReact} />
-      )}
 
       {/* Action buttons now completely below bubble */}
       <MessageActions

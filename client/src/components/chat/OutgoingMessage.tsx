@@ -3,7 +3,6 @@ import { renderTextWithLinks } from "../../utils/textFormatUtils";
 import { isSingleOrPairEmojiMessage } from "@/utils/emojiUtils";
 import { MessageActions } from "./MessageActions";
 import MessageAttachments from "./MessageAttachments";
-import { MessageReactions } from "./MessageReactions";
 import { ReplyPreview } from "./ReplyPreview";
 import { extractAttachments } from "@/types/chat";
 import { User, ChevronDown, ChevronUp, Clock, Check } from "lucide-react";
@@ -19,8 +18,6 @@ interface OutgoingMessageProps {
     sender?: string;
     messageId?: string;
   };
-  reactions?: string[];
-  onReact?: (emoji: string) => void;
 }
 
 /**
@@ -32,8 +29,6 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
   messageId,
   deliveryStatus = "pending",
   replyTo,
-  reactions = [],
-  onReact,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -83,10 +78,10 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
           >
             <div className="w-full space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-white/70">
                   You
                 </span>
-                <span className="text-[9px] text-zinc-400">{timestamp}</span>
+                <span className="text-[9px] text-white/60">{timestamp}</span>
               </div>
 
               {/* Show reply preview if this message is a reply */}
@@ -98,13 +93,12 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
                 />
               )}
 
-              {/* Message content - now with link support for collapsed view too */}
               {cleanMessage && (
                 <p
                   className={`wrap-break-word whitespace-pre-line w-full ${
                     isEmojiOnly
                       ? "text-4xl leading-[1.05] tracking-[-0.03em]"
-                      : "text-sm"
+                      : "text-sm text-white/90"
                   }`}
                 >
                   {isLongMessage && !isExpanded ? (
@@ -126,7 +120,7 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
               {isLongMessage && (
                 <button
                   onClick={handleToggle}
-                  className="text-[10px] text-white mt-1 hover:text-zinc-300 flex items-center font-semibold"
+                  className="text-[10px] text-white/50 mt-1 hover:text-white/70 flex items-center font-semibold"
                 >
                   {isExpanded ? (
                     <>
@@ -140,7 +134,7 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
                 </button>
               )}
 
-              <div className="flex items-center gap-1 text-white">
+              <div className="flex items-center gap-1 text-white/50 ">
                 {deliveryStatus === "pending" && (
                   <Clock
                     className="w-3 h-3 animate-spin"
@@ -177,16 +171,11 @@ export const OutgoingMessage: React.FC<OutgoingMessageProps> = ({
           </div>
           <div className="w-6 h-6 rounded-full flex items-center justify-center ml-1 bg-zinc-800 dark:bg-zinc-700 relative">
             <span className="absolute inset-0 rounded-full border border-zinc-700 dark:border-zinc-600 pointer-events-none"></span>
-            <User className="h-4 w-4 text-white dark:text-zinc-200 relative z-10" />
+            <User className="h-4 w-4 text-white dark:text-zinc-400 relative" />
           </div>
         </div>
       </div>
 
-      {messageId && onReact && (
-        <MessageReactions reactions={reactions ?? []} onReact={onReact} />
-      )}
-
-      {/* Action buttons now completely below bubble, aligned to right */}
       <MessageActions
         isHovering={isHovering}
         onReply={handleReply}
