@@ -3,6 +3,7 @@ import { renderTextWithLinks } from "../../utils/textFormatUtils";
 import { isSingleOrPairEmojiMessage } from "@/utils/emojiUtils";
 import { MessageActions } from "./MessageActions";
 import MessageAttachments from "./MessageAttachments";
+import { MessageReactions } from "./MessageReactions";
 import { ReplyPreview } from "./ReplyPreview";
 import { extractAttachments } from "@/types/chat";
 import { User, ChevronDown, ChevronUp } from "lucide-react";
@@ -18,6 +19,8 @@ interface IncomingMessageProps {
     sender?: string;
     messageId?: string;
   };
+  reactions?: string[];
+  onReact?: (emoji: string) => void;
 }
 
 /**
@@ -29,6 +32,8 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
   userName,
   messageId,
   replyTo,
+  reactions = [],
+  onReact,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -70,19 +75,25 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
   return (
     <div className="flex flex-col mb-2" ref={messageRef}>
       <div className="flex">
-        <div className="w-6 h-6 rounded-full flex items-center justify-center mr-1 bg-gray-200 relative">
-          {/* Light mode circle */}
-          <span className="absolute inset-0 rounded-full border border-rose-300 dark:border-transparent pointer-events-none"></span>
-          <User className="h-4 w-4 text-gray-400 dark:text-gray-600 relative z-10" />
+        <div className="w-6 h-6 rounded-full flex items-center justify-center mr-1 bg-zinc-800 dark:bg-zinc-700 relative">
+          <span className="absolute inset-0 rounded-full border border-zinc-700 dark:border-zinc-600 pointer-events-none"></span>
+          <User className="h-4 w-4 text-white dark:text-zinc-200 relative z-10" />
         </div>
         <div
-          className="message-bubble flex max-w-xs border rounded-md p-2 gap-2 shadow text-xs break-words whitespace-pre-line relative"
+          className="message-bubble flex max-w-xs rounded-[22px] border border-zinc-800 bg-black p-3 shadow-sm text-sm text-white dark:border-zinc-800 dark:bg-black dark:text-white wrap-break-word whitespace-pre-line relative"
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
           onTouchStart={() => setIsHovering(true)}
         >
-          <div className="w-full">
-            <span className="text-rose-500">{userName}</span>
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                {userName}
+              </span>
+              <span className="text-[9px] text-zinc-400 dark:text-zinc-400">
+                {timestamp}
+              </span>
+            </div>
 
             {/* Show reply preview if this message is a reply */}
             {replyTo && (
@@ -96,10 +107,10 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
             {/* Message content - now with link support for collapsed view too */}
             {cleanMessage && (
               <p
-                className={`pt-1 break-words whitespace-pre-line w-full ${
+                className={`wrap-break-word whitespace-pre-line w-full ${
                   isEmojiOnly
                     ? "text-4xl leading-[1.05] tracking-[-0.03em]"
-                    : "text-xs"
+                    : "text-sm"
                 }`}
               >
                 {isLongMessage && !isExpanded ? (
@@ -121,7 +132,7 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
             {isLongMessage && (
               <button
                 onClick={handleToggle}
-                className="text-[10px] text-blue-500 mt-1 hover:underline flex items-center font-bold"
+                className="text-[10px] text-white mt-1 hover:text-zinc-300 flex items-center font-semibold"
               >
                 {isExpanded ? (
                   <>
@@ -134,20 +145,19 @@ export const IncomingMessage: React.FC<IncomingMessageProps> = ({
                 )}
               </button>
             )}
-
-            {/* Timestamp inside bubble */}
-            <div className="">
-              <span className="text-[9px] text-gray-400">{timestamp}</span>
-            </div>
           </div>
         </div>
       </div>
+
+      {messageId && onReact && (
+        <MessageReactions reactions={reactions ?? []} onReact={onReact} />
+      )}
 
       {/* Action buttons now completely below bubble */}
       <MessageActions
         isHovering={isHovering}
         onReply={handleReply}
-        onCopy={() => {}} // Empty function since copying is handled within MessageActions
+        onCopy={() => {}}
         message={message}
         className="ml-7 mt-1"
       />

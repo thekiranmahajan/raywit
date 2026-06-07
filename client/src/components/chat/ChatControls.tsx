@@ -38,6 +38,7 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [currentSkinTone, setCurrentSkinTone] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
+  const isSendingRef = useRef(false);
 
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -78,15 +79,17 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
   }, [shouldFocusInput, setShouldFocusInput]);
 
   const handleSend = async () => {
+    // Prevent double sending with immediate guard
+    if (isSendingRef.current) return;
     if (input.trim() === "" && uploadedFiles.length === 0) return;
 
+    isSendingRef.current = true;
+    setIsUploading(true);
     let finalMessage = input;
 
     try {
       // Check if there are uploaded files
       if (uploadedFiles.length > 0) {
-        setIsUploading(true);
-
         // Upload the images and get their URLs
         const imageUrls = await uploadImages(uploadedFiles);
 
@@ -110,6 +113,7 @@ const ChatControlsContent: React.FC<ChatControlsProps> = ({
       // Handle upload error (show notification to user, etc.)
     } finally {
       setIsUploading(false);
+      isSendingRef.current = false;
     }
   };
 

@@ -30,6 +30,9 @@ interface ChatFeedProps {
 const ChatFeed: FC<ChatFeedProps> = ({ messages, messagesEndRef }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNearBottom, setIsNearBottom] = useState(true);
+  const [messageReactions, setMessageReactions] = useState<
+    Record<string, string[]>
+  >({});
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(messages.length);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -86,6 +89,16 @@ const ChatFeed: FC<ChatFeedProps> = ({ messages, messagesEndRef }) => {
     prevMessagesLengthRef.current = currentLength;
   }, [messages, messagesEndRef, isNearBottom]);
 
+  const handleMessageReaction = (messageId: string, emoji: string) => {
+    setMessageReactions((current) => {
+      const existing = current[messageId] ?? [];
+      return {
+        ...current,
+        [messageId]: [...existing, emoji],
+      };
+    });
+  };
+
   // Handle scroll events
   const handleScroll = () => {
     if (!chatContainerRef.current) return;
@@ -121,9 +134,15 @@ const ChatFeed: FC<ChatFeedProps> = ({ messages, messagesEndRef }) => {
               messageRefs.current[chat.messageId] = element;
             }
           };
+
+          const key = chat.messageId ?? index;
+          const reactions = chat.messageId
+            ? (messageReactions[chat.messageId] ?? [])
+            : [];
+
           return (
             <div
-              key={index}
+              key={key}
               ref={setMessageRef}
               className={`transition-all duration-300 ${animationClass}`}
             >
@@ -139,6 +158,12 @@ const ChatFeed: FC<ChatFeedProps> = ({ messages, messagesEndRef }) => {
                   userName={chat.sender ?? "User"}
                   messageId={chat.messageId}
                   replyTo={chat.replyTo}
+                  reactions={reactions}
+                  onReact={(emoji) => {
+                    if (chat.messageId) {
+                      handleMessageReaction(chat.messageId, emoji);
+                    }
+                  }}
                 />
               ) : (
                 <OutgoingMessage
@@ -147,6 +172,12 @@ const ChatFeed: FC<ChatFeedProps> = ({ messages, messagesEndRef }) => {
                   messageId={chat.messageId}
                   deliveryStatus={chat.deliveryStatus}
                   replyTo={chat.replyTo}
+                  reactions={reactions}
+                  onReact={(emoji) => {
+                    if (chat.messageId) {
+                      handleMessageReaction(chat.messageId, emoji);
+                    }
+                  }}
                 />
               )}
             </div>
