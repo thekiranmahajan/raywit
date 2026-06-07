@@ -126,7 +126,6 @@ setInterval(() => cleanupInactiveSessions(24), 24 * 60 * 60 * 1000);
 const initializeChatRoom = (roomId) => {
   if (!chatRooms[roomId]) {
     chatRooms[roomId] = {
-      messages: [],
       users: new Map(),
     };
   }
@@ -203,9 +202,9 @@ io.on("connection", (socket) => {
     const targetRoomId = roomId || currentRoomId;
     const requestingUser = userId || currentUserId || "Unknown user";
     console.log("Available chat rooms:", Object.keys(chatRooms));
-    const messagesToSend =
-      chatRooms[targetRoomId]?.messages ||
-      (await getMessagesByRoom(targetRoomId)).map(normalizeDbMessage);
+    const messagesToSend = (await getMessagesByRoom(targetRoomId)).map(
+      normalizeDbMessage,
+    );
 
     console.log(
       `Re-sending ${messagesToSend.length || 0} old messages for ${requestingUser} in room ${targetRoomId}`,
@@ -224,7 +223,6 @@ io.on("connection", (socket) => {
     const persistedMessages = (await getMessagesByRoom(roomId)).map(
       normalizeDbMessage,
     );
-    chatRooms[roomId].messages = persistedMessages;
 
     const sessionUserId =
       socket.data.userId || `${socket.data.userName || userName}_${nanoid(4)}`;
@@ -253,7 +251,7 @@ io.on("connection", (socket) => {
     socket.emit("joined-room", { userId: sessionUserId, users: usersArr });
 
     socket.emit("load-old-messages", {
-      messages: chatRooms[roomId].messages || [],
+      messages: persistedMessages,
     });
 
     if (isNewUser) {
@@ -287,15 +285,6 @@ io.on("connection", (socket) => {
         };
 
         await saveMessage(storedMessage);
-
-        chatRooms[roomId].messages.push({
-          encryptedData,
-          userId,
-          userName: senderName,
-          messageId,
-          replyTo,
-          timestamp: storedMessage.timestamp,
-        });
 
         // Send acknowledgment to sender (message saved to database)
         socket.emit("message-ack", {

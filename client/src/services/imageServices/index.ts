@@ -10,7 +10,3 @@ export * from "./sessionUtils";
 
 // Export upload functionality
 export { uploadImages, attachImagesToMessage } from "./uploadService";
-
-// Export cleanup service as default
-import cleanupService from "./cleanupService";
-export default cleanupService;

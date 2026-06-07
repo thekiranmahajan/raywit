@@ -2,8 +2,6 @@ import { createMessageTimestamp, formatMessageTime } from "@/utils/dateUtils";
 import { encryptMessage, decryptMessage } from "@/utils/encryptionUtils";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import sessionManager from "@/services/sessionManager";
-import cleanupService from "@/services/imageServices";
 import { getAuthToken } from "@/services/authService";
 import {
   ChatMessage,
@@ -134,11 +132,6 @@ export function useSocket(
       setUsers(users || []);
 
       // Initialize session
-      sessionManager.initSession(roomId, userId, userName, socketIo);
-
-      // Register cleanup handlers
-      cleanupService.registerCleanupHandlers();
-
       // Check if we already have a "you joined" message to avoid duplicates
       setMessages((prev) => {
         const alreadyHasJoinedMessage = prev.some(
@@ -440,9 +433,6 @@ export function useSocket(
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      if (socketIo.connected) {
-        cleanupService.cleanupOnLeave().catch(console.error);
-      }
       socketIo.disconnect();
       clearInterval(cleanupInterval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
