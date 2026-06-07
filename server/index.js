@@ -127,6 +127,7 @@ const initializeChatRoom = (roomId) => {
   if (!chatRooms[roomId]) {
     chatRooms[roomId] = {
       users: new Map(),
+      messages: [],
     };
   }
   if (!typingUsers[roomId]) {
@@ -196,25 +197,6 @@ io.on("connection", (socket) => {
   let currentRoomId = null;
   let currentUserId = null;
 
-  // Handler for re-requesting old messages when user comes back to the tab
-  // This handler is at the connection level so it works even after reconnection
-  socket.on("request-old-messages", async ({ roomId, userId }) => {
-    const targetRoomId = roomId || currentRoomId;
-    const requestingUser = userId || currentUserId || "Unknown user";
-    console.log("Available chat rooms:", Object.keys(chatRooms));
-    const messagesToSend = (await getMessagesByRoom(targetRoomId)).map(
-      normalizeDbMessage,
-    );
-
-    console.log(
-      `Re-sending ${messagesToSend.length || 0} old messages for ${requestingUser} in room ${targetRoomId}`,
-    );
-    socket.emit("load-old-messages", {
-      messages: messagesToSend,
-    });
-    console.log("Messages sent to client");
-  });
-
   socket.on("join-room", async ({ roomId, userName = "User" }) => {
     console.log(`${userName} ${socket.id} joined room ${roomId}`);
 
@@ -223,6 +205,10 @@ io.on("connection", (socket) => {
     const persistedMessages = (await getMessagesByRoom(roomId)).map(
       normalizeDbMessage,
     );
+
+    if (chatRooms[roomId].messages.length === 0) {
+      chatRooms[roomId].messages = persistedMessages;
+    }
 
     const sessionUserId =
       socket.data.userId || `${socket.data.userName || userName}_${nanoid(4)}`;
@@ -251,7 +237,7 @@ io.on("connection", (socket) => {
     socket.emit("joined-room", { userId: sessionUserId, users: usersArr });
 
     socket.emit("load-old-messages", {
-      messages: persistedMessages,
+      messages: chatRooms[roomId].messages,
     });
 
     if (isNewUser) {
@@ -284,9 +270,16 @@ io.on("connection", (socket) => {
           timestamp: Date.now(),
         };
 
-        await saveMessage(storedMessage);
+        chatRooms[roomId].messages.push({
+          encryptedData,
+          userId,
+          userName: senderName,
+          messageId,
+          replyTo,
+          timestamp: storedMessage.timestamp,
+        });
 
-        // Send acknowledgment to sender (message saved to database)
+        // Send acknowledgment to sender immediately
         socket.emit("message-ack", {
           messageId,
           deliveryStatus: "sent",
@@ -307,6 +300,10 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("message-delivered", {
           messageId,
           deliveryStatus: "delivered",
+        });
+
+        saveMessage(storedMessage).catch((error) => {
+          console.error("Failed to persist chat message:", error);
         });
       },
     );

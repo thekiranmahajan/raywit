@@ -108,16 +108,6 @@ export function useSocket(
       console.warn("Socket connection timeout");
     });
 
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      const threshold = 60000;
-      Object.keys(recentlyLeftUsers.current).forEach((id) => {
-        if (now - recentlyLeftUsers.current[id] > threshold) {
-          delete recentlyLeftUsers.current[id];
-        }
-      });
-    }, 60000);
-
     socketIo.emit("join-room", { roomId, userName });
     socketIo.on("joined-room", ({ userId, users }: UserJoinLeaveData) => {
       console.log(
@@ -166,25 +156,17 @@ export function useSocket(
       console.log(`Socket reconnected after ${attemptNumber} attempts`);
       socketIo.emit("join-room", { roomId, userName });
 
-      // Request messages after rejoining room
-      socketIo.once("joined-room", () => {
-        socketIo.emit("request-old-messages", {
-          roomId,
-          userId: userIdRef.current,
-        });
-
-        // Retry pending messages
-        pendingMessagesRef.current.forEach((msg, messageId) => {
-          console.log(`Retrying pending message: ${messageId}`);
-          socketIo.emit("send-message", {
-            encryptedData: encryptMessage(msg.message),
-            userId: msg.userId,
-            messageId,
-            replyTo: msg.replyTo && {
-              ...msg.replyTo,
-              message: encryptMessage(msg.replyTo.message),
-            },
-          });
+      // Retry pending messages after reconnect
+      pendingMessagesRef.current.forEach((msg, messageId) => {
+        console.log(`Retrying pending message: ${messageId}`);
+        socketIo.emit("send-message", {
+          encryptedData: encryptMessage(msg.message),
+          userId: msg.userId,
+          messageId,
+          replyTo: msg.replyTo && {
+            ...msg.replyTo,
+            message: encryptMessage(msg.replyTo.message),
+          },
         });
       });
     });
@@ -313,51 +295,14 @@ export function useSocket(
         };
       });
 
-      // Process messages
       setMessages((prev) => {
-        // No existing messages, use all received ones
-        if (prev.length === 0) return [...decrypted];
-
-        // Keep system messages about joining today
         const systemMsgs = prev.filter(
           (msg) =>
             msg.type === "system" &&
             msg.message === `you joined the chat` &&
             msg.timestamp.startsWith(new Date().toISOString().split("T")[0]),
         );
-
-        // Check if server has newer/more messages using rawTimestamp
-        const userMsgsCount = prev.filter((m) => m.type === "user").length;
-        const serverMaxTimestamp = Math.max(
-          ...decrypted.map((m) => m.rawTimestamp || 0),
-          0,
-        );
-        const clientMaxTimestamp = Math.max(
-          ...prev
-            .filter((m) => m.type === "user")
-            .map((m) => m.rawTimestamp || 0),
-          0,
-        );
-
-        const serverHasNewerData =
-          decrypted.length > 0 &&
-          (userMsgsCount === 0 ||
-            decrypted.length > userMsgsCount ||
-            serverMaxTimestamp > clientMaxTimestamp);
-
-        // Replace messages or add new unique ones
-        if (serverHasNewerData) {
-          return [...decrypted, ...systemMsgs];
-        }
-
-        // Add only messages we don't already have
-        const existingIds = new Set(
-          prev.map((m) => m.messageId).filter(Boolean),
-        );
-        const newMsgs = decrypted.filter(
-          (m) => !m.messageId || !existingIds.has(m.messageId),
-        );
-        return newMsgs.length > 0 ? [...newMsgs, ...prev] : prev;
+        return [...decrypted, ...systemMsgs];
       });
     });
 
@@ -400,42 +345,8 @@ export function useSocket(
 
     setSocket(socketIo);
 
-    // Handle visibility change to reconnect or fetch messages when tab becomes visible
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible" || !socketIo) return;
-
-      if (!socketIo.connected) {
-        console.log("Tab visible but socket disconnected. Reconnecting...");
-        socketIo.connect();
-        socketIo.once("connect", () => {
-          console.log("Socket reconnected. Joining room...");
-          socketIo.emit("join-room", { roomId, userName });
-          socketIo.once("joined-room", () => {
-            console.log("Joined room confirmed. Requesting old messages...");
-            socketIo.emit("request-old-messages", {
-              roomId,
-              userId: userIdRef.current,
-            });
-          });
-        });
-      } else {
-        // Already connected, just request old messages
-        console.log(
-          "Tab visible with socket already connected. Requesting messages...",
-        );
-        socketIo.emit("request-old-messages", {
-          roomId,
-          userId: userIdRef.current,
-        });
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       socketIo.disconnect();
-      clearInterval(cleanupInterval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
 
       // Clear all retry timers
       retryTimersRef.current.forEach((timer) => clearTimeout(timer));
